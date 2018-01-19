@@ -1,5 +1,7 @@
 # upcoming-games
 
+[![PyPI](https://img.shields.io/pypi/v/aav.upcoming-games.svg?style=for-the-badge)](https://pypi.python.org/pypi/aav.upcoming-games)
+
 Reddit bot to update sidebar for /r/IGN. Can be configured for a variety of uses.
 
 # Usage
