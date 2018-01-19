@@ -28,7 +28,7 @@ def log(msg, silent):
         return
     print(f'[{time.ctime()}] {msg}')
 
-def get_all_games(time='7d', system='', silent=False):
+def get_all_games(time='7d', systems=[], silent=False):
     """Get a list of tuples of game names and UpcomingGame objects for the specified range."""
     if time not in ('7d', '1m', '3m', '6m', '12m', 'all'):
         log("Invalid time period given, stopping.", silent)
@@ -50,6 +50,8 @@ def get_all_games(time='7d', system='', silent=False):
             gsyst = gchildren[3].div.h3.span.text.strip()
             gdtmp, gstat = _cal.parse(gchildren[-2].text.strip())
             gdate = datetime.date(*gdtmp[:3])
+            if systems is not None and gsyst not in systems:
+                continue
             if gdate > datetime.date.today():
                 if gname not in games.keys():
                     games[gname] = UpcomingGame(gname, [gsyst], {gdate: [gsyst]})
@@ -71,7 +73,7 @@ def get_markdown(games, limit=10, tformat='short', silent=False):
         return
     output = ""
     if tformat == 'short':
-        log("Building 'short' Markdown table.")
+        log("Building 'short' Markdown table.", silent)
         output += "| Title | Release |\n"
         output += "| ----- | ------- |\n"
         count = 0
@@ -80,7 +82,7 @@ def get_markdown(games, limit=10, tformat='short', silent=False):
             output += f"| {name} | {min(data.release.keys()).strftime('%b %d')} |\n"
             count += 1
     else:
-        log("Building 'long' Markdown table.")
+        log("Building 'long' Markdown table.", silent)
         output += "| Title | Systems | Release Dates |\n"
         output += "| ----- | ------- | ------------- |\n"
         count = 0
@@ -98,8 +100,25 @@ def get_markdown(games, limit=10, tformat='short', silent=False):
             count += 1
     return output
 
-def post_table(reddit, subreddit, formatstring, type='sidebar'):
-    pass
-
+def post_table(reddit, subreddit, table, formatstring, ptype='sidebar'):
+    """Make either a stickied post, or edit the sidebar to add a Markdown table."""
+    if ptype not in ('sidebar', 'sticky'):
+        log("Post type must be sticky or sidebar.", silent)
+        return
+    if ptype == "sidebar":
+        log("Updating sidebar...", silent)
+        sett = reddit.get_settings(subreddit)
+        sidebar = formatstring.replace("%%%TABLE%%%", table)
+        reddit.update_settings(reddit.get_subreddit(subreddit), description=sidebar)
+        log("Sidebar updated successfully.", silent)
+    else:
+        log("Creating stickied post...", silent)
+        post_title = f'Upcoming Games: {datetime.date.today().strftime("%B %d, %Y")}'
+        post_data = formatstring.replace("%%%TABLE%%%", table)
+        subr = reddit.subreddit(subreddit)
+        post = subr.submit(post_title, post_data)
+        post.distinguish()
+        post.sticky()
+        log("Stickied post created successfully.", silent)
 
 __all__ = ['UpcomingGame', 'get_all_games', 'get_markdown']
