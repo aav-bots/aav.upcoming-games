@@ -18,7 +18,10 @@ class UpcomingGame(object):
         if newsys not in systems:
             systems.append(newsys)
         if newrls not in release:
-            release.append(newrls)
+            release[newrls] = newsys
+        else:
+            release[newrls].append(newsys)
+
 
 def log(msg):
     print(f'[{time.ctime()}] {msg}')
@@ -31,7 +34,8 @@ def get_all_games(time='7d', system=''):
     params = { 'time': time, 'startIndex': 0 }
     headers = { 'User-Agent': _ua }
     games = dict()
-    gdata = requests.get(_base, params=params, headers=headers)
+    gsess = requests.Session()
+    gdata = gsess.get(_base, params=params, headers=headers)
     soup = BeautifulSoup(gdata.content, 'html.parser')
     divs = soup.find_all('div', class_='clear itemList-item')
     while len(divs) > 0:
@@ -45,10 +49,10 @@ def get_all_games(time='7d', system=''):
             gdate = datetime.date(*gdtmp[:3])
             if gdate > datetime.date.today():
                 if gname not in games.keys():
-                    games[gname] = UpcomingGame(gname, [gsyst], [gdate])
+                    games[gname] = UpcomingGame(gname, [gsyst], {gdate: [gsyst]})
         log(f"Added {len(games) - cursize} new games.")
         params['startIndex'] += len(divs)
-        gdata = requests.get(_base, params=params)
+        gdata = gsess.get(_base, params=params, headers=headers)
         soup = BeautifulSoup(gdata.content, 'html.parser')
         divs = soup.find_all('div', class_='clear itemList-item')
     log("Done scraping games.")
