@@ -15,22 +15,25 @@ class UpcomingGame(object):
         self.systems = systems
         self.release = release
     def add_system(self, newsys, newrls):
-        if newsys not in systems:
-            systems.append(newsys)
-        if newrls not in release:
-            release[newrls] = newsys
+        if newsys not in self.systems:
+            self.systems.append(newsys)
+        if newrls not in self.release:
+            self.release[newrls] = [newsys]
         else:
-            release[newrls].append(newsys)
+            if newsys not in self.release[newrls]:
+                self.release[newrls].append(newsys)
 
-
-def log(msg):
+def log(msg, silent):
+    if silent:
+        return
     print(f'[{time.ctime()}] {msg}')
 
-def get_all_games(time='7d', system=''):
+def get_all_games(time='7d', system='', silent=False):
+    """Get a list of tuples of game names and UpcomingGame objects for the specified range."""
     if time not in ('7d', '1m', '3m', '6m', '12m', 'all'):
-        log("Invalid time period given, stopping.")
-        retur
-    log("Starting scraping for games.")
+        log("Invalid time period given, stopping.", silent)
+        return
+    log("Starting scraping for games.", silent)
     params = { 'time': time, 'startIndex': 0 }
     headers = { 'User-Agent': _ua }
     games = dict()
@@ -39,7 +42,7 @@ def get_all_games(time='7d', system=''):
     soup = BeautifulSoup(gdata.content, 'html.parser')
     divs = soup.find_all('div', class_='clear itemList-item')
     while len(divs) > 0:
-        log(f"Parsing {len(divs)} game entries..")
+        log(f"Parsing {len(divs)} game entries..", silent)
         cursize = len(games)
         for div in divs:
             gchildren = list(div.children)
@@ -50,15 +53,53 @@ def get_all_games(time='7d', system=''):
             if gdate > datetime.date.today():
                 if gname not in games.keys():
                     games[gname] = UpcomingGame(gname, [gsyst], {gdate: [gsyst]})
-        log(f"Added {len(games) - cursize} new games.")
+                else:
+                    games[gname].add_system(gsyst, gdate)
+        log(f"Added {len(games) - cursize} new games.", silent)
         params['startIndex'] += len(divs)
         gdata = gsess.get(_base, params=params, headers=headers)
         soup = BeautifulSoup(gdata.content, 'html.parser')
         divs = soup.find_all('div', class_='clear itemList-item')
-    log("Done scraping games.")
-    return games
+    log("Done scraping games, sorting by closest release.", silent)
+    gsorted = sorted(games.items(), key=lambda v: (min(v[1].release.keys()), v[0]))
+    return gsorted
 
-def get_markdown(tformat='short'):
+def get_markdown(games, limit=10, tformat='short', silent=False):
+    """Format a list of game tuples in a Markdown table."""
     if tformat not in ('short', 'long'):
-        log("Table must be in short or long format.")
+        log("Table must be in short or long format.", silent)
         return
+    output = ""
+    if tformat == 'short':
+        log("Building 'short' Markdown table.")
+        output += "| Title | Release |\n"
+        output += "| ----- | ------- |\n"
+        count = 0
+        while count < limit and count < len(games):
+            name, data = games[count]
+            output += f"| {name} | {min(data.release.keys()).strftime('%b %d')} |\n"
+            count += 1
+    else:
+        log("Building 'long' Markdown table.")
+        output += "| Title | Systems | Release Dates |\n"
+        output += "| ----- | ------- | ------------- |\n"
+        count = 0
+        while count < limit and count < len(games):
+            name, data = games[count]
+            output += f"| {name} | {', '.join(sorted(data.systems))} | "
+            dates = data.release.keys()
+            doutp = []
+            if len(dates) == 1:
+                doutp = [list(dates)[0].strftime('%B %d')]
+            else:
+                for date in dates:
+                    doutp.append(f"{date.strftime('%B %d')}: ({', '.join(sorted(data.release[date]))})")
+            output += f"{'; '.join(doutp)} |\n"
+            count += 1
+    return output
+
+def post_table(reddit, subreddit, formatstring, type='sidebar'):
+    pass
+
+
+__all__ = ['UpcomingGame', 'get_all_games', 'get_markdown']
