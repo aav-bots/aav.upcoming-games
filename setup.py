@@ -26,8 +26,8 @@ setup(
             'upcoming-games = upcoming_games:main'
         ]
     },
-    keywords = "university data search api",
-    author = "AAV-Bots",
+    keywords = "upcoming games reddit bot",
+    author = "aav-bots",
     url = "https://github.com/aav-bots/upcoming-games",
     license = "MIT",
     packages = find_packages(),
