@@ -1,5 +1,5 @@
-praw>=5.1.0
-requests>=2.18.0
-ruamel.yaml>=0.15.35
-parsedatetime>=2.4
-beautifulsoup4>=4.6.0
+praw
+requests
+ruamel.yaml
+parsedatetime
+beautifulsoup4
