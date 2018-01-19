@@ -125,7 +125,7 @@ def post_table(reddit, subreddit, table, formatstring, ptype='sidebar', silent=F
 
 def main():
     if len(sys.argv) < 2:
-        log('You need to provide a configuration file to run this program.')
+        log('You need to provide a configuration file to run this program.', False)
     else:
         yaml = ruamel.yaml.YAML(typ='safe', pure=True)
         config = dict()

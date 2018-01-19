@@ -8,7 +8,7 @@ except(IOError, ImportError):
     long_desc = open('README.md').read()
 
 setup(
-    name = "upcoming-games",
+    name = "aav.upcoming-games",
     version = "0.1.0",
     description = "Reddit bot to provide updates for video games.",
     long_description = long_desc,
@@ -26,7 +26,7 @@ setup(
             'upcoming-games = upcoming_games:main'
         ]
     },
-    keywords = "upcoming games reddit bot",
+    keywords = "aav upcoming games reddit bot",
     author = "aav-bots",
     url = "https://github.com/aav-bots/upcoming-games",
     license = "MIT",
@@ -38,5 +38,5 @@ setup(
         "parsedatetime",
         "beautifulsoup4"
     ],
-    python_requires = '3.6',
+    python_requires = '>=3.6',
 )
