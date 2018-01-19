@@ -1,7 +1,9 @@
+import sys
 import time
 import praw
 import requests
 import datetime
+import ruamel.yaml
 import parsedatetime
 from bs4 import BeautifulSoup
 
@@ -50,7 +52,7 @@ def get_all_games(time='7d', systems=[], silent=False):
             gsyst = gchildren[3].div.h3.span.text.strip()
             gdtmp, gstat = _cal.parse(gchildren[-2].text.strip())
             gdate = datetime.date(*gdtmp[:3])
-            if systems is not None and gsyst not in systems:
+            if systems != [] and gsyst not in systems:
                 continue
             if gdate > datetime.date.today():
                 if gname not in games.keys():
@@ -100,25 +102,61 @@ def get_markdown(games, limit=10, tformat='short', silent=False):
             count += 1
     return output
 
-def post_table(reddit, subreddit, table, formatstring, ptype='sidebar'):
+def post_table(reddit, subreddit, table, formatstring, ptype='sidebar', silent=False):
     """Make either a stickied post, or edit the sidebar to add a Markdown table."""
     if ptype not in ('sidebar', 'sticky'):
         log("Post type must be sticky or sidebar.", silent)
         return
+    sub = reddit.subreddit(subreddit)
+    submod = sub.mod
     if ptype == "sidebar":
         log("Updating sidebar...", silent)
-        sett = reddit.get_settings(subreddit)
         sidebar = formatstring.replace("%%%TABLE%%%", table)
-        reddit.update_settings(reddit.get_subreddit(subreddit), description=sidebar)
+        submod.update(description=sidebar)
         log("Sidebar updated successfully.", silent)
     else:
         log("Creating stickied post...", silent)
         post_title = f'Upcoming Games: {datetime.date.today().strftime("%B %d, %Y")}'
         post_data = formatstring.replace("%%%TABLE%%%", table)
-        subr = reddit.subreddit(subreddit)
-        post = subr.submit(post_title, post_data)
-        post.distinguish()
-        post.sticky()
+        post = sub.submit(post_title, post_data)
+        post.mod.distinguish()
+        post.mod.sticky()
         log("Stickied post created successfully.", silent)
 
-__all__ = ['UpcomingGame', 'get_all_games', 'get_markdown']
+def main():
+    if len(sys.argv) < 2:
+        log('You need to provide a configuration file to run this program.')
+    else:
+        yaml = ruamel.yaml.YAML(typ='safe', pure=True)
+        config = dict()
+        with open(sys.argv[1], 'r') as f:
+            config = yaml.load(f)
+        user_agent = (f"upcoming-games by /u/ASK-ABOUT-VETRANCH for /r/{config['reddit']['subreddit']}, "
+                      f"hosted by /u/{config['reddit']['scripthost']}")
+        reddit = praw.Reddit(client_id = config["reddit"]["client_id"],
+                             client_secret = config["reddit"]["client_secret"],
+                             user_agent = user_agent,
+                             username=config["reddit"]["scripthost"],
+                             password=config["reddit"]["password"])
+        gamelist = get_all_games(time=config["general"]["time_period"],
+                                 systems=config["general"]["systems"],
+                                 silent=config["general"]["silent"])
+        game_table = get_markdown(gamelist,
+                                  limit=config["general"]["game_limit"],
+                                  tformat=config["general"]["table_format"],
+                                  silent=config["general"]["silent"])
+        formstring = "%%%TABLE%%%"
+        try:
+            with open(config["reddit"]["template"], 'r') as f:
+                formstring = f.read()
+        except:
+            pass
+        post_table(reddit, config["reddit"]["subreddit"], game_table, formstring,
+                   ptype=config["reddit"]["post_type"],
+                   silent=config["general"]["silent"])
+        log("Done posting!", config["general"]["silent"])
+
+if __name__ == '__main__':
+    main()
+
+__all__ = ['UpcomingGame', 'get_all_games', 'get_markdown', 'post_table']

@@ -1,0 +1,15 @@
+general:
+  silent: False
+  time_period: "7d"
+  systems: []
+  game_limit: 10
+  table_format: "short"
+
+reddit:
+  client_id: "..."
+  client_secret: "..."
+  subreddit: "..."
+  scripthost: "..."
+  password: "..."
+  post_type: "sidebar"
+  template: 'path/to/template.txt'
